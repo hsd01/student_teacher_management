@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Class Teacher Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <div>
+    <h3 class="mb-1">📚 Class Teacher Dashboard</h3>
+    <p class="text-muted mb-0">Class: <b>{{ teacher_class }}</b></p>
+  </div>
+  <!-- ✅ Performance Button -->
+  <a href="/performance" class="btn btn-primary btn-sm">
+    📈 Performance
+  </a>
+</div>
+
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card p-3 shadow-sm">
+      <h5>📊 Student Performance ({{ teacher_class }})</h5>
+      <canvas id="classPerformance"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm p-3">
+  <h5>👨‍🎓 Students in {{ teacher_class }}</h5>
+  <table class="table table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th>Name</th>
+        <th>Roll</th>
+        <th>Total Marks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in students %}
+      <tr>
+        <td>{{ s.name }}</td>
+        <td>{{ s.roll_no }}</td>
+        <td>{{ s.total_marks }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const labels = {{ labels | tojson }};
+  const values = {{ values | tojson }};
+
+  new Chart(document.getElementById("classPerformance"), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Total Marks',
+        data: values
+      }]
+    }
+  });
+</script>
+
+{% endblock %}

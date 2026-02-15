@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Student Performance{% endblock %}
+
+{% block content %}
+<h3 class="mb-3">📈 Student Performance (Class {{ teacher_class }})</h3>
+
+<div class="card shadow p-3 mb-4">
+  <form method="POST" class="row g-2">
+    <div class="col-md-4">
+      <label class="form-label">Select Student</label>
+      <select name="student_id" class="form-select" required>
+        <option value="">-- Select Student --</option>
+        {% for s in students %}
+          <option value="{{ s.id }}" {% if selected_student and selected_student.id == s.id %}selected{% endif %}>
+            {{ s.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Select Test</label>
+      <select name="test_name" class="form-select" required>
+        <option value="">-- Select Test --</option>
+        <option value="unit1" {% if selected_test == 'unit1' %}selected{% endif %}>Unit Test 1</option>
+        <option value="unit2" {% if selected_test == 'unit2' %}selected{% endif %}>Unit Test 2</option>
+        <option value="halfyearly" {% if selected_test == 'halfyearly' %}selected{% endif %}>Half Yearly</option>
+        <option value="final" {% if selected_test == 'final' %}selected{% endif %}>Final Exam</option>
+      </select>
+    </div>
+
+    <div class="col-md-3 align-self-end">
+      <button class="btn btn-primary w-100">View Performance</button>
+    </div>
+  </form>
+</div>
+
+{% if marks %}
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card shadow p-3">
+      <h5>Marks – {{ selected_test|capitalize }}</h5>
+      <ul class="list-group">
+        <li class="list-group-item">Subject 1: {{ marks.subject1 }}</li>
+        <li class="list-group-item">Subject 2: {{ marks.subject2 }}</li>
+        <li class="list-group-item">Subject 3: {{ marks.subject3 }}</li>
+        <li class="list-group-item">Subject 4: {{ marks.subject4 }}</li>
+        <li class="list-group-item">Subject 5: {{ marks.subject5 }}</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow p-3">
+      <h5>📊 Performance Graph</h5>
+      <canvas id="studentChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ NEW: Overall Exams Pie Chart -->
+<div class="card shadow p-3 mt-4 text-center">
+  <h5>🥧 Overall Performance (All Exams)</h5>
+
+  <div class="d-flex justify-content-center">
+    <div style="width: 280px; height: 280px;">
+      <canvas id="overallPieChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Bar chart (selected test)
+  const labels = ["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5"];
+  const values = [
+    {{ marks.subject1 }},
+    {{ marks.subject2 }},
+    {{ marks.subject3 }},
+    {{ marks.subject4 }},
+    {{ marks.subject5 }}
+  ];
+
+  new Chart(document.getElementById("studentChart"), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Marks ({{ selected_test|capitalize }})',
+        data: values
+      }]
+    }
+  });
+
+  // Pie chart (all exams)
+  const overallLabels = {{ overall_labels | tojson }};
+  const overallValues = {{ overall_values | tojson }};
+
+  new Chart(document.getElementById("overallPieChart"), {
+    type: 'pie',
+    data: {
+      labels: overallLabels,
+      datasets: [{
+        data: overallValues
+      }]
+    }
+  });
+</script>
+<script>
+  new Chart(document.getElementById("overallPieChart"), {
+    type: 'pie',
+    data: {
+      labels: overallLabels,
+      datasets: [{
+        data: overallValues
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+</script>
+
+{% endif %}
+
+{% endblock %}

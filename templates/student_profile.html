@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card shadow p-4">
+  <h3>{{ student.name }}</h3>
+  <p><b>Roll:</b> {{ student.roll_no }}</p>
+  <p><b>Class:</b> {{ student.class }}</p>
+
+  <canvas id="marksChart"></canvas>
+  <a href="/student/pdf/{{ student.id }}" class="btn btn-danger mt-3">📄 Download PDF Report</a>
+</div>
+
+<script>
+new Chart(document.getElementById("marksChart"), {
+  type: 'bar',
+  data: {
+    labels: {{ labels|safe }},
+    datasets: [{
+      label: 'Marks',
+      data: {{ values|safe }},
+    }]
+  }
+});
+</script>
+
+{% endblock %}

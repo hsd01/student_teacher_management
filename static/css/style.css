@@ -1,0 +1,22 @@
+body {
+  background-color: #f4f6f9;
+}
+
+.login-bg {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(120deg, #667eea, #764ba2);
+}
+
+.login-card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 350px;
+}
+
+.card {
+  border-radius: 12px;
+}

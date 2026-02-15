@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-4">
+    <div class="card shadow p-3">
+      <h5 class="mb-3">➕ Register New Teacher</h5>
+      <form method="POST">
+        <input class="form-control mb-2" name="username" placeholder="Username" required>
+        <input class="form-control mb-2" type="password" name="password" placeholder="Password" required>
+        <button class="btn btn-success w-100">Create Teacher</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card shadow p-3">
+      <h5 class="mb-3">👨‍🏫 Teachers List</h5>
+      <table class="table table-striped">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in teachers %}
+          <tr>
+            <td>{{ t.id }}</td>
+            <td>{{ t.username }}</td>
+            <td>{{ t.role }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

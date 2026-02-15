@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>{{ 'Edit' if student else 'Add' }} Student</h3>
+
+<form method="POST" class="card p-4 shadow">
+  <input class="form-control mb-2" name="name" placeholder="Name" value="{{ student.name if student }}" required>
+  <input class="form-control mb-2" name="roll" placeholder="Roll No" value="{{ student.roll_no if student }}" required>
+  <input class="form-control mb-2" name="class" placeholder="Class" value="{{ student.class if student }}" required>
+  <button class="btn btn-success">Save</button>
+</form>
+
+{% endblock %}
