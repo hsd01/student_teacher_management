@@ -8,7 +8,12 @@
       <h5 class="mb-3">➕ Register New Teacher</h5>
       <form method="POST">
         <input class="form-control mb-2" name="username" placeholder="Username" required>
+
         <input class="form-control mb-2" type="password" name="password" placeholder="Password" required>
+
+        <!-- ✅ New Field -->
+        <input class="form-control mb-2" name="class_teacher" placeholder="Class (e.g. 10A, 9B)" required>
+
         <button class="btn btn-success w-100">Create Teacher</button>
       </form>
     </div>
@@ -23,6 +28,7 @@
             <th>ID</th>
             <th>Username</th>
             <th>Role</th>
+            <th>Class</th> <!-- ✅ show class -->
           </tr>
         </thead>
         <tbody>
@@ -31,6 +37,7 @@
             <td>{{ t.id }}</td>
             <td>{{ t.username }}</td>
             <td>{{ t.role }}</td>
+            <td>{{ t.class_teacher }}</td> <!-- ✅ -->
           </tr>
           {% endfor %}
         </tbody>

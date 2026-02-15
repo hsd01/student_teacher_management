@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, session, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db_connection
 from fpdf import FPDF
+import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -21,11 +22,11 @@ def login():
         user = cursor.fetchone()
         cursor.close()
         conn.close()
-
+        print("USER>>>>>",user)
         if user and check_password_hash(user["password"], password):
             session["user_id"] = user["id"]
             session["role"] = user["role"]
-
+            print(user["id"],":::::::::::::::::::::::::",user["role"])
             if user["role"] == "admin":
                 return redirect("/admin")
             return redirect("/dashboard")
@@ -41,7 +42,7 @@ def logout():
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin_dashboard():
-    if "user_id" not in session or session["role"] != "admin":
+    if "user_id" not in session or session.get("role") != "admin":
         return redirect("/")
 
     conn = get_db_connection()
@@ -49,18 +50,18 @@ def admin_dashboard():
 
     if request.method == "POST":
         username = request.form["username"]
-        password = generate_password_hash(request.form["password"])
+        password = password = generate_password_hash(request.form["password"])
+        class_teacher = request.form["class_teacher"]
 
-        cursor.execute(
-            "INSERT INTO users (username, password, role) VALUES (%s,%s,'teacher')",
-            (username, password)
-        )
+        cursor.execute("""
+            INSERT INTO users (username, password, role, class_teacher)
+            VALUES (%s, %s, 'teacher', %s)
+        """, (username, password, class_teacher))
+
         conn.commit()
 
-    cursor.execute("SELECT id, username, role FROM users WHERE role='teacher'")
+    cursor.execute("SELECT id, username, role, class_teacher FROM users WHERE role='teacher'")
     teachers = cursor.fetchall()
-
-    print("DEBUG teachers:", teachers)  # 👈 add this
 
     cursor.close()
     conn.close()
@@ -130,7 +131,7 @@ def student_pdf(id):
     pdf.output("report.pdf")
 
     return send_file("report.pdf", as_attachment=True)
-"""
+
 @app.route("/student/add", methods=["GET", "POST"])
 def add_student():
     if "user_id" not in session:
@@ -154,6 +155,58 @@ def add_student():
         return redirect("/students")
 
     return render_template("student_form.html", student=None)
+
+"""
+@app.route("/student/add", methods=["POST"])
+def add_student():
+    if "user_id" not in session:
+        return redirect("/")
+
+    name = request.form["name"]
+    roll_no = request.form["roll_no"]
+    class_name = request.form["class"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO students (name, roll_no, class) VALUES (%s, %s, %s)",
+        (name, roll_no, class_name)
+    )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect("/dashboard")
+
+import pandas as pd
+
+@app.route("/students/import", methods=["POST"])
+def import_students():
+    if "user_id" not in session:
+        return redirect("/")
+
+    file = request.files["file"]
+    class_name = request.form["class"]
+
+    df = pd.read_excel(file)
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    for _, row in df.iterrows():
+        cursor.execute(
+            "INSERT INTO students (name, roll_no, class) VALUES (%s, %s, %s)",
+            (row["name"], row["roll_no"], class_name)
+        )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect("/dashboard")
+
 
 @app.route("/students")
 def students():
@@ -337,6 +390,47 @@ def delete_student(id):
 
     return redirect("/students")
 
+@app.route("/marks/save", methods=["POST"])
+def save_marks():
+    if "user_id" not in session:
+        return redirect("/")
+
+    student_id = request.form["student_id"]
+    test_name = request.form["test_name"]
+    s1 = request.form["subject1"]
+    s2 = request.form["subject2"]
+    s3 = request.form["subject3"]
+    s4 = request.form["subject4"]
+    s5 = request.form["subject5"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT id FROM student_marks 
+        WHERE student_id=%s AND test_name=%s
+    """, (student_id, test_name))
+
+    existing = cursor.fetchone()
+
+    if existing:
+        cursor.execute("""
+            UPDATE student_marks 
+            SET subject1=%s, subject2=%s, subject3=%s, subject4=%s, subject5=%s
+            WHERE student_id=%s AND test_name=%s
+        """, (s1, s2, s3, s4, s5, student_id, test_name))
+    else:
+        cursor.execute("""
+            INSERT INTO student_marks 
+            (student_id, test_name, subject1, subject2, subject3, subject4, subject5)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (student_id, test_name, s1, s2, s3, s4, s5))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect("/dashboard")
 
 
 if __name__ == "__main__":

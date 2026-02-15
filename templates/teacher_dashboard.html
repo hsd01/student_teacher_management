@@ -61,4 +61,106 @@
   });
 </script>
 
+<div class="row mt-4">
+  <!-- ➕ Add Single Student -->
+  <div class="col-md-6">
+    <div class="card shadow-sm p-3">
+      <h5>➕ Add Student</h5>
+      <form method="POST" action="/student/add">
+        <input type="hidden" name="class" value="{{ teacher_class }}">
+
+        <div class="mb-2">
+          <label class="form-label">Student Name</label>
+          <input class="form-control" name="name" required>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Roll No</label>
+          <input class="form-control" name="roll_no" required>
+        </div>
+
+        <button class="btn btn-success w-100">Add Student</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 📥 Import Excel -->
+  <div class="col-md-6">
+    <div class="card shadow-sm p-3">
+      <h5>📥 Import Students (Excel)</h5>
+      <form method="POST" action="/students/import" enctype="multipart/form-data">
+        <input type="hidden" name="class" value="{{ teacher_class }}">
+
+        <div class="mb-2">
+          <label class="form-label">Upload Excel File</label>
+          <input type="file" class="form-control" name="file" accept=".xlsx,.xls" required>
+        </div>
+
+        <button class="btn btn-primary w-100">Import Students</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <!-- 📝 Add / Update Marks -->
+  <div class="col-md-12">
+    <div class="card shadow-sm p-3">
+      <h5>📝 Add / Update Student Marks</h5>
+
+      <form method="POST" action="/marks/save" class="row g-2">
+        <div class="col-md-3">
+          <label class="form-label">Student</label>
+          <select name="student_id" class="form-select" required>
+            <option value="">-- Select Student --</option>
+            {% for s in students %}
+              <option value="{{ s.id }}">{{ s.name }} ({{ s.roll_no }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Test</label>
+          <select name="test_name" class="form-select" required>
+            <option value="">-- Select Test --</option>
+            <option value="unit1">Unit Test 1</option>
+            <option value="unit2">Unit Test 2</option>
+            <option value="halfyearly">Half Yearly</option>
+            <option value="final">Final Exam</option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Subject 1</label>
+          <input type="number" name="subject1" class="form-control" min="0" max="100" required>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Subject 2</label>
+          <input type="number" name="subject2" class="form-control" min="0" max="100" required>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Subject 3</label>
+          <input type="number" name="subject3" class="form-control" min="0" max="100" required>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Subject 4</label>
+          <input type="number" name="subject4" class="form-control" min="0" max="100" required>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Subject 5</label>
+          <input type="number" name="subject5" class="form-control" min="0" max="100" required>
+        </div>
+
+        <div class="col-md-2 align-self-end">
+          <button class="btn btn-primary w-100">Save Marks</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
