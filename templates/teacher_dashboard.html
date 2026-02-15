@@ -13,11 +13,26 @@
     📈 Performance
   </a>
 </div>
+<form method="GET" class="mb-2">
+  <div class="d-flex gap-2 align-items-end">
+    <div>
+      <label class="form-label mb-1">Select Test</label>
+      <select name="test" class="form-select" onchange="this.form.submit()">
+        <option value="unit1" {% if selected_test == 'unit1' %}selected{% endif %}>Unit Test 1</option>
+        <option value="unit2" {% if selected_test == 'unit2' %}selected{% endif %}>Unit Test 2</option>
+        <option value="halfyearly" {% if selected_test == 'halfyearly' %}selected{% endif %}>Half Yearly</option>
+        <option value="final" {% if selected_test == 'final' %}selected{% endif %}>Final Exam</option>
+      </select>
+    </div>
+  </div>
+</form>
 
 <div class="row mb-4">
   <div class="col-md-12">
     <div class="card p-3 shadow-sm">
-      <h5>📊 Student Performance ({{ teacher_class }})</h5>
+      <!--h5>📊 Student Performance ({{ teacher_class }})</h5-->
+      <h5>📊 Student Performance – {{ selected_test|capitalize }} ({{ teacher_class }})</h5>
+
       <canvas id="classPerformance"></canvas>
     </div>
   </div>
@@ -85,7 +100,7 @@
   </div>
 
   <!-- 📥 Import Excel -->
-  <div class="col-md-6">
+  <!--div class="col-md-6">
     <div class="card shadow-sm p-3">
       <h5>📥 Import Students (Excel)</h5>
       <form method="POST" action="/students/import" enctype="multipart/form-data">
@@ -100,7 +115,34 @@
       </form>
     </div>
   </div>
+</div-->
+<!-- 📥 Import Excel -->
+<div class="col-md-6">
+  <div class="card shadow-sm p-3">
+    <h5>📥 Import Students (Excel)</h5>
+    <form method="POST" action="/students/import" enctype="multipart/form-data">
+      <input type="hidden" name="class" value="{{ teacher_class }}">
+
+      <div class="mb-2">
+        <label class="form-label">Upload Excel File</label>
+        <input type="file" class="form-control" name="file" accept=".xlsx,.xls" required>
+      </div>
+
+      <button class="btn btn-primary w-100">Import Students</button>
+    </form>
+
+    <!-- ✅ Download Template -->
+    <div class="mt-2 text-center">
+      <a href="/students/template" class="btn btn-outline-secondary btn-sm">
+        ⬇ Download Excel Template
+      </a>
+      <small class="d-block text-muted mt-1">
+        Use this template to upload students in correct format
+      </small>
+    </div>
+  </div>
 </div>
+
 
 <div class="row mt-4">
   <!-- 📝 Add / Update Marks -->
@@ -162,5 +204,47 @@
     </div>
   </div>
 </div>
+
+<div class="card shadow-sm p-3">
+  <h5>📥 Import Marks (Excel by Student Name)</h5>
+
+  <form method="POST" action="/marks/import" enctype="multipart/form-data" class="row g-2">
+    <input type="hidden" name="class" value="{{ teacher_class }}">
+
+    <div class="col-md-4">
+      <label class="form-label">Test</label>
+      <select name="test_name" class="form-select" required>
+        <option value="">-- Select Test --</option>
+        <option value="unit1">Unit Test 1</option>
+        <option value="unit2">Unit Test 2</option>
+        <option value="halfyearly">Half Yearly</option>
+        <option value="final">Final Exam</option>
+      </select>
+    </div>
+
+    <div class="col-md-5">
+      <label class="form-label">Upload Excel File</label>
+      <input type="file" class="form-control" name="file" accept=".xlsx" required>
+    </div>
+
+    <div class="col-md-3 align-self-end">
+      <button class="btn btn-primary w-100">Import Marks</button>
+    </div>
+  </form>
+
+  <!-- ✅ Download Template Button -->
+  <div class="mt-2">
+    <a href="/marks/template" class="btn btn-outline-secondary btn-sm">
+      ⬇ Download Excel Template
+    </a>
+    <small class="text-muted ms-2">
+      Use this template to upload marks correctly.
+    </small>
+  </div>
+</div>
+
+<small class="text-muted">
+  Tip: Re-submitting marks for the same student & test will update existing marks.
+</small>
 
 {% endblock %}

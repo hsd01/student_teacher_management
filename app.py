@@ -3,6 +3,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db_connection
 from fpdf import FPDF
 import pandas as pd
+from openpyxl import load_workbook
+from openpyxl import Workbook
+from flask import send_file
+import os
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -69,41 +73,7 @@ def admin_dashboard():
     return render_template("admin_dashboard.html", teachers=teachers)
 
 
-"""@app.route("/students")
-def students():
-    if not login_required():
-        return redirect("/")
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM students")
-    students = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template("students.html", students=students)
-
-@app.route("/student/add", methods=["GET","POST"])
-def add_student():
-    if not login_required():
-        return redirect("/")
-
-    if request.method == "POST":
-        name = request.form["name"]
-        roll = request.form["roll"]
-        cls = request.form["class"]
-        marks = request.form["marks"]
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO students (name, roll_no, class, marks) VALUES (%s,%s,%s,%s)",
-                       (name, roll, cls, marks))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return redirect("/students")
-
-    return render_template("student_form.html")
-"""
 @app.route("/student/<int:id>")
 def student_profile(id):
     conn = get_db_connection()
@@ -221,7 +191,7 @@ def students():
     conn.close()
 
     return render_template("students.html", students=students)
-
+"""
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
@@ -244,6 +214,7 @@ def dashboard():
         "SELECT COALESCE(AVG(marks), 0) AS avg_marks FROM students WHERE class=%s",
         (teacher_class,)
     )
+    print("ssss:",teacher_class)
     avg_row = cursor.fetchone()
 
     cursor.close()
@@ -259,6 +230,54 @@ def dashboard():
         labels=labels,
         values=values,
         avg_marks=float(avg_row["avg_marks"])
+    )
+"""
+@app.route("/dashboard", methods=["GET", "POST"])
+def dashboard():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # get teacher class
+    cursor.execute("SELECT class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    teacher_class = cursor.fetchone()["class_teacher"]
+
+    # selected test (default = unit1)
+    selected_test = request.args.get("test", "unit1")
+
+    # get students
+    cursor.execute("SELECT id, name, roll_no FROM students WHERE class=%s", (teacher_class,))
+    students = cursor.fetchall()
+
+    # get marks for selected test
+    cursor.execute("""
+        SELECT s.name,
+               IFNULL(m.subject1,0)+IFNULL(m.subject2,0)+IFNULL(m.subject3,0)+
+               IFNULL(m.subject4,0)+IFNULL(m.subject5,0) AS total
+        FROM students s
+        LEFT JOIN student_marks m
+          ON s.id = m.student_id AND m.test_name = %s
+        WHERE s.class = %s
+        ORDER BY s.roll_no
+    """, (selected_test, teacher_class))
+
+    rows = cursor.fetchall()
+
+    labels = [r["name"] for r in rows]
+    values = [r["total"] for r in rows]
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "teacher_dashboard.html",
+        teacher_class=teacher_class,
+        students=students,
+        labels=labels,
+        values=values,
+        selected_test=selected_test
     )
 
 @app.route("/performance", methods=["GET", "POST"])
@@ -432,6 +451,116 @@ def save_marks():
 
     return redirect("/dashboard")
 
+@app.route("/marks/import", methods=["POST"])
+def import_marks_excel():
+    if "user_id" not in session:
+        return redirect("/")
+
+    file = request.files["file"]
+    test_name = request.form["test_name"]
+    class_name = request.form["class"]
+
+    wb = load_workbook(file)
+    sheet = wb.active
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        name, s1, s2, s3, s4, s5 = row
+
+        # get student id
+        cursor.execute(
+            "SELECT id FROM students WHERE name=%s AND class=%s",
+            (name, class_name)
+        )
+        student = cursor.fetchone()
+
+        if not student:
+            continue  # skip unknown students
+
+        student_id = student["id"]
+
+        # upsert marks
+        cursor.execute("""
+            INSERT INTO student_marks (student_id, test_name, subject1, subject2, subject3, subject4, subject5)
+            VALUES (%s,%s,%s,%s,%s,%s,%s)
+            ON DUPLICATE KEY UPDATE
+              subject1=VALUES(subject1),
+              subject2=VALUES(subject2),
+              subject3=VALUES(subject3),
+              subject4=VALUES(subject4),
+              subject5=VALUES(subject5)
+        """, (student_id, test_name, s1, s2, s3, s4, s5))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect("/dashboard")
+"""@app.route("/marks/template")
+def download_marks_template():
+    wb = Workbook()
+    sheet = wb.active
+    sheet.title = "Marks Template"
+
+    # header row
+    sheet.append(["name", "subject1", "subject2", "subject3", "subject4", "subject5"])
+
+    file_path = "marks_template.xlsx"
+    wb.save(file_path)
+
+    return send_file(file_path, as_attachment=True)
+"""
+@app.route("/marks/template")
+def download_marks_template():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Get teacher class
+    cursor.execute("SELECT class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    teacher = cursor.fetchone()
+    teacher_class = teacher["class_teacher"]
+
+    # Get students of this class
+    cursor.execute("SELECT name, roll_no FROM students WHERE class=%s ORDER BY roll_no", (teacher_class,))
+    students = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    # Create Excel file
+    wb = Workbook()
+    sheet = wb.active
+    sheet.title = f"{teacher_class} Marks Template"
+
+    # Header row
+    sheet.append(["student_name", "subject1", "subject2", "subject3", "subject4", "subject5"])
+
+    # Pre-fill student names
+    for s in students:
+        sheet.append([s["name"], "", "", "", "", ""])
+
+    file_path = f"marks_template_{teacher_class}.xlsx"
+    wb.save(file_path)
+
+    return send_file(file_path, as_attachment=True)
+@app.route("/students/template")
+def download_students_template():
+    wb = Workbook()
+    sheet = wb.active
+    sheet.title = "Students Template"
+
+    # Header format for students import
+    sheet.append(["name", "roll_no", "class"])
+
+    file_path = "students_template.xlsx"
+    wb.save(file_path)
+
+    return send_file(file_path, as_attachment=True)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
