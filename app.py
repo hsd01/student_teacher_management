@@ -555,7 +555,7 @@ def download_students_template():
     sheet.title = "Students Template"
 
     # Header format for students import
-    sheet.append(["name", "roll_no", "class"])
+    sheet.append(["name", "roll_no"])
 
     file_path = "students_template.xlsx"
     wb.save(file_path)

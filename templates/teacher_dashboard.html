@@ -3,19 +3,18 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-2">
+<div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h3 class="mb-1">📚 Class Teacher Dashboard</h3>
     <p class="text-muted mb-0">Class: <b>{{ teacher_class }}</b></p>
   </div>
-  <!-- ✅ Performance Button -->
-  <a href="/performance" class="btn btn-primary btn-sm">
-    📈 Performance
-  </a>
+  <a href="/performance" class="btn btn-primary btn-sm">📈 Performance</a>
 </div>
-<form method="GET" class="mb-2">
-  <div class="d-flex gap-2 align-items-end">
-    <div>
+
+<!-- Test Selector -->
+<form method="GET" class="mb-3">
+  <div class="row">
+    <div class="col-md-4">
       <label class="form-label mb-1">Select Test</label>
       <select name="test" class="form-select" onchange="this.form.submit()">
         <option value="unit1" {% if selected_test == 'unit1' %}selected{% endif %}>Unit Test 1</option>
@@ -27,37 +26,41 @@
   </div>
 </form>
 
+<!-- Chart -->
 <div class="row mb-4">
-  <div class="col-md-12">
+  <div class="col-12">
     <div class="card p-3 shadow-sm">
-      <!--h5>📊 Student Performance ({{ teacher_class }})</h5-->
       <h5>📊 Student Performance – {{ selected_test|capitalize }} ({{ teacher_class }})</h5>
-
       <canvas id="classPerformance"></canvas>
     </div>
   </div>
 </div>
 
-<div class="card shadow-sm p-3">
-  <h5>👨‍🎓 Students in {{ teacher_class }}</h5>
-  <table class="table table-striped">
-    <thead class="table-dark">
-      <tr>
-        <th>Name</th>
-        <th>Roll</th>
-        <th>Total Marks</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in students %}
-      <tr>
-        <td>{{ s.name }}</td>
-        <td>{{ s.roll_no }}</td>
-        <td>{{ s.total_marks }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<!-- Students Table -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm p-3">
+      <h5>👨‍🎓 Students in {{ teacher_class }}</h5>
+      <table class="table table-striped mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>Name</th>
+            <th>Roll</th>
+            <th>Total Marks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+          <tr>
+            <td>{{ s.name }}</td>
+            <td>{{ s.roll_no }}</td>
+            <td>{{ s.total_marks }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -76,87 +79,58 @@
   });
 </script>
 
-<div class="row mt-4">
-  <!-- ➕ Add Single Student -->
+<!-- Add Student + Import Students -->
+<div class="row mb-4">
   <div class="col-md-6">
-    <div class="card shadow-sm p-3">
+    <div class="card shadow-sm p-3 h-100">
       <h5>➕ Add Student</h5>
       <form method="POST" action="/student/add">
         <input type="hidden" name="class" value="{{ teacher_class }}">
-
         <div class="mb-2">
           <label class="form-label">Student Name</label>
           <input class="form-control" name="name" required>
         </div>
-
         <div class="mb-2">
           <label class="form-label">Roll No</label>
           <input class="form-control" name="roll_no" required>
         </div>
-
         <button class="btn btn-success w-100">Add Student</button>
       </form>
     </div>
   </div>
 
-  <!-- 📥 Import Excel -->
-  <!--div class="col-md-6">
-    <div class="card shadow-sm p-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm p-3 h-100">
       <h5>📥 Import Students (Excel)</h5>
       <form method="POST" action="/students/import" enctype="multipart/form-data">
         <input type="hidden" name="class" value="{{ teacher_class }}">
-
         <div class="mb-2">
-          <label class="form-label">Upload Excel File</label>
+          <label class="form-label">Upload Excel File this will add all students name and roll no. to dashboard</label>
           <input type="file" class="form-control" name="file" accept=".xlsx,.xls" required>
         </div>
-
         <button class="btn btn-primary w-100">Import Students</button>
       </form>
-    </div>
-  </div>
-</div-->
-<!-- 📥 Import Excel -->
-<div class="col-md-6">
-  <div class="card shadow-sm p-3">
-    <h5>📥 Import Students (Excel)</h5>
-    <form method="POST" action="/students/import" enctype="multipart/form-data">
-      <input type="hidden" name="class" value="{{ teacher_class }}">
 
-      <div class="mb-2">
-        <label class="form-label">Upload Excel File</label>
-        <input type="file" class="form-control" name="file" accept=".xlsx,.xls" required>
+      <div class="mt-2 text-center">
+        <a href="/students/template" class="btn btn-outline-secondary btn-sm">⬇ Download Excel Template</a>
+        <small class="d-block text-muted mt-1">Use this template to upload students in correct format</small>
       </div>
-
-      <button class="btn btn-primary w-100">Import Students</button>
-    </form>
-
-    <!-- ✅ Download Template -->
-    <div class="mt-2 text-center">
-      <a href="/students/template" class="btn btn-outline-secondary btn-sm">
-        ⬇ Download Excel Template
-      </a>
-      <small class="d-block text-muted mt-1">
-        Use this template to upload students in correct format
-      </small>
     </div>
   </div>
 </div>
 
-
-<div class="row mt-4">
-  <!-- 📝 Add / Update Marks -->
-  <div class="col-md-12">
+<!-- Add Marks -->
+<!--div class="row mb-4">
+  <div class="col-12">
     <div class="card shadow-sm p-3">
       <h5>📝 Add / Update Student Marks</h5>
-
       <form method="POST" action="/marks/save" class="row g-2">
         <div class="col-md-3">
           <label class="form-label">Student</label>
           <select name="student_id" class="form-select" required>
             <option value="">-- Select Student --</option>
             {% for s in students %}
-              <option value="{{ s.id }}">{{ s.name }} ({{ s.roll_no }})</option>
+            <option value="{{ s.id }}">{{ s.name }} ({{ s.roll_no }})</option>
             {% endfor %}
           </select>
         </div>
@@ -172,30 +146,12 @@
           </select>
         </div>
 
+        {% for i in range(1,6) %}
         <div class="col-md-2">
-          <label class="form-label">Subject 1</label>
-          <input type="number" name="subject1" class="form-control" min="0" max="100" required>
+          <label class="form-label">Subject {{ i }}</label>
+          <input type="number" name="subject{{ i }}" class="form-control" min="0" max="100" required>
         </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Subject 2</label>
-          <input type="number" name="subject2" class="form-control" min="0" max="100" required>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Subject 3</label>
-          <input type="number" name="subject3" class="form-control" min="0" max="100" required>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Subject 4</label>
-          <input type="number" name="subject4" class="form-control" min="0" max="100" required>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Subject 5</label>
-          <input type="number" name="subject5" class="form-control" min="0" max="100" required>
-        </div>
+        {% endfor %}
 
         <div class="col-md-2 align-self-end">
           <button class="btn btn-primary w-100">Save Marks</button>
@@ -203,43 +159,108 @@
       </form>
     </div>
   </div>
+</div-->
+<!-- Add Marks -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm p-3">
+      <h5>📝 Add / Update Student Marks</h5>
+
+      <form method="POST" action="/marks/save">
+        <!-- Row 1: Student + Test -->
+        <div class="row g-2 mb-2">
+          <div class="col-md-4">
+            <label class="form-label">Student</label>
+            <select name="student_id" class="form-select" required>
+              <option value="">-- Select Student --</option>
+              {% for s in students %}
+              <option value="{{ s.id }}">{{ s.name }} ({{ s.roll_no }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Test</label>
+            <select name="test_name" class="form-select" required>
+              <option value="">-- Select Test --</option>
+              <option value="unit1">Unit Test 1</option>
+              <option value="unit2">Unit Test 2</option>
+              <option value="halfyearly">Half Yearly</option>
+              <option value="final">Final Exam</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Subjects -->
+        <div class="row g-2 mb-3">
+          <div class="col-md-2">
+            <label class="form-label">Subject 1</label>
+            <input type="number" name="subject1" class="form-control" min="0" max="100" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Subject 2</label>
+            <input type="number" name="subject2" class="form-control" min="0" max="100" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Subject 3</label>
+            <input type="number" name="subject3" class="form-control" min="0" max="100" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Subject 4</label>
+            <input type="number" name="subject4" class="form-control" min="0" max="100" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Subject 5</label>
+            <input type="number" name="subject5" class="form-control" min="0" max="100" required>
+          </div>
+        </div>
+
+        <!-- Row 3: Save Button -->
+        <div class="row">
+          <div class="col-md-3 ms-auto">
+            <button class="btn btn-primary w-100">Save Marks</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
-<div class="card shadow-sm p-3">
-  <h5>📥 Import Marks (Excel by Student Name)</h5>
+<!-- Import Marks -->
+<div class="row mb-2">
+  <div class="col-12">
+    <div class="card shadow-sm p-3">
+      <h5>📥 Import Marks (Excel by Student Name)</h5>
+      <form method="POST" action="/marks/import" enctype="multipart/form-data" class="row g-2">
+        <input type="hidden" name="class" value="{{ teacher_class }}">
 
-  <form method="POST" action="/marks/import" enctype="multipart/form-data" class="row g-2">
-    <input type="hidden" name="class" value="{{ teacher_class }}">
+        <div class="col-md-4">
+          <label class="form-label">Test</label>
+          <select name="test_name" class="form-select" required>
+            <option value="">-- Select Test --</option>
+            <option value="unit1">Unit Test 1</option>
+            <option value="unit2">Unit Test 2</option>
+            <option value="halfyearly">Half Yearly</option>
+            <option value="final">Final Exam</option>
+          </select>
+        </div>
 
-    <div class="col-md-4">
-      <label class="form-label">Test</label>
-      <select name="test_name" class="form-select" required>
-        <option value="">-- Select Test --</option>
-        <option value="unit1">Unit Test 1</option>
-        <option value="unit2">Unit Test 2</option>
-        <option value="halfyearly">Half Yearly</option>
-        <option value="final">Final Exam</option>
-      </select>
+        <div class="col-md-5">
+          <label class="form-label">Upload Excel File</label>
+          <input type="file" class="form-control" name="file" accept=".xlsx" required>
+        </div>
+
+        <div class="col-md-3 align-self-end">
+          <button class="btn btn-primary w-100">Import Marks</button>
+        </div>
+      </form>
+
+      <div class="mt-2">
+        <a href="/marks/template" class="btn btn-outline-secondary btn-sm">⬇ Download Excel Template</a>
+        <small class="text-muted ms-2">Use this template to upload marks correctly.</small>
+        <small class="text-muted ms-2">NOTE This section add all students and there marks.</small>
+      </div>
     </div>
-
-    <div class="col-md-5">
-      <label class="form-label">Upload Excel File</label>
-      <input type="file" class="form-control" name="file" accept=".xlsx" required>
-    </div>
-
-    <div class="col-md-3 align-self-end">
-      <button class="btn btn-primary w-100">Import Marks</button>
-    </div>
-  </form>
-
-  <!-- ✅ Download Template Button -->
-  <div class="mt-2">
-    <a href="/marks/template" class="btn btn-outline-secondary btn-sm">
-      ⬇ Download Excel Template
-    </a>
-    <small class="text-muted ms-2">
-      Use this template to upload marks correctly.
-    </small>
   </div>
 </div>
 
