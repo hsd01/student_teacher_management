@@ -28,6 +28,8 @@ def login():
         conn.close()
         print("USER>>>>>",user)
         if user and check_password_hash(user["password"], password):
+            if user.get("is_active") == 0:
+                return render_template("login.html", error="Your account is suspended. Contact admin.")
             session["user_id"] = user["id"]
             session["role"] = user["role"]
             print(user["id"],":::::::::::::::::::::::::",user["role"])
@@ -72,9 +74,32 @@ def admin_dashboard():
 
     return render_template("admin_dashboard.html", teachers=teachers)
 
-
-
 @app.route("/student/<int:id>")
+def student_profile(id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Get teacher class
+    cursor.execute("SELECT class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    teacher_class = cursor.fetchone()["class_teacher"]
+
+    # Fetch student only if same class
+    cursor.execute("SELECT * FROM students WHERE id=%s AND class=%s", (id, teacher_class))
+    student = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if not student:
+        return "Access Denied", 403
+
+    return render_template("student_profile.html", student=student)
+
+
+"""@app.route("/student/<int:id>")
 def student_profile(id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -84,7 +109,7 @@ def student_profile(id):
     conn.close()
     return render_template("student_profile.html", student=student)
 
-"""@app.route("/student/pdf/<int:id>")
+@app.route("/student/pdf/<int:id>")
 def student_pdf(id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -177,6 +202,55 @@ def import_students():
 
     return redirect("/dashboard")
 
+@app.route("/students")
+def students():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Get logged-in teacher's class
+    cursor.execute("SELECT class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    teacher = cursor.fetchone()
+    teacher_class = teacher["class_teacher"]
+
+    # ✅ Order by roll number (ascending)
+    cursor.execute("""
+        SELECT * 
+        FROM students 
+        WHERE class=%s 
+        ORDER BY roll_no ASC
+    """, (teacher_class,))
+    students = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template("students.html", students=students, teacher_class=teacher_class)
+
+
+"""@app.route("/students")
+def students():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # ✅ Get logged-in teacher's class
+    cursor.execute("SELECT class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    teacher = cursor.fetchone()
+    teacher_class = teacher["class_teacher"]
+
+    # ✅ Fetch only students of that class
+    cursor.execute("SELECT * FROM students WHERE class=%s ORDER BY roll_no", (teacher_class,))
+    students = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template("students.html", students=students, teacher_class=teacher_class)
 
 @app.route("/students")
 def students():
@@ -191,7 +265,7 @@ def students():
     conn.close()
 
     return render_template("students.html", students=students)
-"""
+
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
@@ -561,6 +635,63 @@ def download_students_template():
     wb.save(file_path)
 
     return send_file(file_path, as_attachment=True)
+
+# toggel
+# ✅ Toggle teacher active / suspended
+"""@app.route("/admin/teacher/toggle/<int:teacher_id>", methods=["POST"])
+def toggle_teacher(teacher_id):
+    if "user_id" not in session or session.get("role") != "admin":
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(
+        "UPDATE users SET is_active = NOT is_active WHERE id = %s",
+        (teacher_id,)
+    )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect("/admin")
+"""
+@app.route("/admin/teacher/toggle/<int:teacher_id>", methods=["POST"])
+def toggle_teacher(teacher_id):
+    if "user_id" not in session or session.get("role") != "admin":
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET is_active = IF(is_active = 1, 0, 1) WHERE id = %s",
+        (teacher_id,)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect("/admin")
+
+
+# ❌ Delete teacher
+@app.route("/admin/teacher/delete/<int:teacher_id>", methods=["POST"])
+def delete_teacher(teacher_id):
+    if "user_id" not in session or session.get("role") != "admin":
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM users WHERE id = %s", (teacher_id,))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return redirect("/admin")
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

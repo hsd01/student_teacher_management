@@ -3,32 +3,33 @@
 
 {% block content %}
 <div class="row">
+  <!-- Register Teacher -->
   <div class="col-md-4">
-    <div class="card shadow p-3">
+    <div class="card shadow p-3 h-100">
       <h5 class="mb-3">➕ Register New Teacher</h5>
       <form method="POST">
         <input class="form-control mb-2" name="username" placeholder="Username" required>
-
         <input class="form-control mb-2" type="password" name="password" placeholder="Password" required>
-
-        <!-- ✅ New Field -->
         <input class="form-control mb-2" name="class_teacher" placeholder="Class (e.g. 10A, 9B)" required>
-
         <button class="btn btn-success w-100">Create Teacher</button>
       </form>
     </div>
   </div>
 
+  <!-- Teachers List -->
   <div class="col-md-8">
-    <div class="card shadow p-3">
+    <div class="card shadow p-3 h-100">
       <h5 class="mb-3">👨‍🏫 Teachers List</h5>
-      <table class="table table-striped">
+
+      <table class="table table-striped align-middle">
         <thead class="table-dark">
           <tr>
             <th>ID</th>
             <th>Username</th>
             <th>Role</th>
-            <th>Class</th> <!-- ✅ show class -->
+            <th>Class</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -37,7 +38,34 @@
             <td>{{ t.id }}</td>
             <td>{{ t.username }}</td>
             <td>{{ t.role }}</td>
-            <td>{{ t.class_teacher }}</td> <!-- ✅ -->
+            <td>{{ t.class_teacher }}</td>
+
+            <!-- Status -->
+            <td>
+              {% if t.is_active == 1 %}
+                <span class="badge bg-success">Login Enabled</span>
+              {% else %}
+                <span class="badge bg-danger">Login Disabled</span>
+              {% endif %}
+            </td>
+
+            <!-- Actions -->
+            <td class="d-flex gap-1">
+              <!-- Enable / Disable Login -->
+              <form method="POST" action="/admin/teacher/toggle/{{ t.id }}">
+                {% if t.is_active == 1 %}
+                  <button class="btn btn-sm btn-warning">Disable Login</button>
+                {% else %}
+                  <button class="btn btn-sm btn-success">Enable Login</button>
+                {% endif %}
+              </form>
+
+              <!-- Delete -->
+              <form method="POST" action="/admin/teacher/delete/{{ t.id }}"
+                    onsubmit="return confirm('Are you sure you want to delete this teacher?');">
+                <button class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
