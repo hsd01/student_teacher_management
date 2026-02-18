@@ -2,6 +2,48 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
+
+<h3 class="mb-4">👑 Admin Dashboard</h3>
+
+<!-- ====== STATS SECTION ====== -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card shadow p-3 text-center h-100">
+      <h5>Total Students</h5>
+      <h2 class="text-primary">{{ total_students }}</h2>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow p-3 text-center h-100">
+      <h5>Total Teachers</h5>
+      <h2 class="text-success">{{ total_teachers }}</h2>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow p-3 mb-4">
+  <h5 class="mb-3">📊 Students Per Class</h5>
+
+  <table class="table table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th>Class</th>
+        <th>Total Students</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in class_stats %}
+      <tr>
+        <td>{{ c.class }}</td>
+        <td>{{ c.total }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ====== TEACHER MANAGEMENT SECTION ====== -->
 <div class="row">
   <!-- Register Teacher -->
   <div class="col-md-4">
@@ -73,4 +115,5 @@
     </div>
   </div>
 </div>
+
 {% endblock %}

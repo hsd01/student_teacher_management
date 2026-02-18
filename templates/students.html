@@ -2,13 +2,25 @@
 {% block title %}Students{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<!--div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h3 class="mb-0">Students</h3>
     <small class="text-muted">Class: {{ teacher_class }}</small>
   </div>
   <a href="/student/add" class="btn btn-success">+ Add Student</a>
+</div-->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-0">Students</h3>
+    {% if role != 'admin' %}
+      <small class="text-muted">Class: {{ teacher_class }}</small>
+    {% else %}
+      <small class="text-muted">Showing students from all classes</small>
+    {% endif %}
+  </div>
+  <a href="/student/add" class="btn btn-success">+ Add Student</a>
 </div>
+
 
 <table class="table table-striped shadow-sm">
   <thead class="table-dark">

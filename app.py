@@ -54,6 +54,57 @@ def admin_dashboard():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
+    # create teacher
+    if request.method == "POST":
+        username = request.form["username"]
+        password = generate_password_hash(request.form["password"])
+        class_teacher = request.form["class_teacher"]
+
+        cursor.execute("""
+            INSERT INTO users (username, password, role, class_teacher, is_active)
+            VALUES (%s, %s, 'teacher', %s, 1)
+        """, (username, password, class_teacher))
+
+        conn.commit()
+
+    # teachers list
+    cursor.execute("SELECT id, username, role, class_teacher, is_active FROM users WHERE role='teacher'")
+    teachers = cursor.fetchall()
+
+    # stats
+    cursor.execute("SELECT COUNT(*) AS total_students FROM students")
+    total_students = cursor.fetchone()["total_students"]
+
+    cursor.execute("SELECT COUNT(*) AS total_teachers FROM users WHERE role='teacher'")
+    total_teachers = cursor.fetchone()["total_teachers"]
+
+    cursor.execute("""
+        SELECT class, COUNT(*) AS total
+        FROM students
+        GROUP BY class
+        ORDER BY class
+    """)
+    class_stats = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "admin_dashboard.html",
+        teachers=teachers,
+        total_students=total_students,
+        total_teachers=total_teachers,
+        class_stats=class_stats
+    )
+
+'''@app.route("/admin", methods=["GET", "POST"])
+def admin_dashboard():
+    if "user_id" not in session or session.get("role") != "admin":
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
     if request.method == "POST":
         username = request.form["username"]
         password = password = generate_password_hash(request.form["password"])
@@ -73,7 +124,7 @@ def admin_dashboard():
     conn.close()
 
     return render_template("admin_dashboard.html", teachers=teachers)
-
+'''
 @app.route("/student/<int:id>")
 def student_profile(id):
     if "user_id" not in session:
@@ -202,7 +253,7 @@ def import_students():
 
     return redirect("/dashboard")
 
-@app.route("/students")
+'''@app.route("/students")
 def students():
     if "user_id" not in session:
         return redirect("/")
@@ -228,6 +279,40 @@ def students():
     conn.close()
 
     return render_template("students.html", students=students, teacher_class=teacher_class)
+'''
+@app.route("/students")
+def students_dashboard():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Get current user role & class
+    cursor.execute("SELECT role, class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    user = cursor.fetchone()
+
+    role = user["role"]
+    teacher_class = user["class_teacher"]
+
+    # ✅ Admin sees all students
+    if role == "admin":
+        cursor.execute("SELECT * FROM students ORDER BY class, roll_no ASC")
+        students = cursor.fetchall()
+    else:
+        # ✅ Teacher sees only own class students
+        cursor.execute("SELECT * FROM students WHERE class=%s ORDER BY roll_no ASC", (teacher_class,))
+        students = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "students.html",
+        students=students,
+        teacher_class=teacher_class if role != "admin" else "All Classes",
+        role=role
+    )
 
 
 """@app.route("/students")
@@ -306,7 +391,94 @@ def dashboard():
         avg_marks=float(avg_row["avg_marks"])
     )
 """
+
 @app.route("/dashboard", methods=["GET", "POST"])
+def dashboard():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # get current user role
+    cursor.execute("SELECT role, class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    user = cursor.fetchone()
+
+    role = user["role"]
+    teacher_class = user["class_teacher"]
+
+    # ==========================
+    # 👑 ADMIN DASHBOARD
+    # ==========================
+    if role == "admin":
+        # Total counts
+        cursor.execute("SELECT COUNT(*) AS total_students FROM students")
+        total_students = cursor.fetchone()["total_students"]
+
+        cursor.execute("SELECT COUNT(*) AS total_teachers FROM users WHERE role='teacher'")
+        total_teachers = cursor.fetchone()["total_teachers"]
+
+        # Students per class
+        cursor.execute("""
+            SELECT class, COUNT(*) AS total
+            FROM students
+            GROUP BY class
+            ORDER BY class
+        """)
+        class_stats = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return render_template(
+            "admin_dashboard.html",   # 👈 create this template
+            total_students=total_students,
+            total_teachers=total_teachers,
+            class_stats=class_stats
+        )
+
+    # ==========================
+    # 👨‍🏫 TEACHER DASHBOARD
+    # ==========================
+    selected_test = request.args.get("test", "unit1")
+
+    # get students of teacher class
+    cursor.execute(
+        "SELECT id, name, roll_no FROM students WHERE class=%s ORDER BY roll_no ASC",
+        (teacher_class,)
+    )
+    students = cursor.fetchall()
+
+    # get marks for selected test
+    cursor.execute("""
+        SELECT s.name,
+               IFNULL(m.subject1,0)+IFNULL(m.subject2,0)+IFNULL(m.subject3,0)+
+               IFNULL(m.subject4,0)+IFNULL(m.subject5,0) AS total
+        FROM students s
+        LEFT JOIN student_marks m
+          ON s.id = m.student_id AND m.test_name = %s
+        WHERE s.class = %s
+        ORDER BY s.roll_no
+    """, (selected_test, teacher_class))
+
+    rows = cursor.fetchall()
+
+    labels = [r["name"] for r in rows]
+    values = [r["total"] for r in rows]
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "teacher_dashboard.html",
+        teacher_class=teacher_class,
+        students=students,
+        labels=labels,
+        values=values,
+        selected_test=selected_test
+    )
+
+'''@app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
     if "user_id" not in session:
         return redirect("/")
@@ -352,9 +524,9 @@ def dashboard():
         labels=labels,
         values=values,
         selected_test=selected_test
-    )
+    )'''
 
-@app.route("/performance", methods=["GET", "POST"])
+'''@app.route("/performance", methods=["GET", "POST"])
 def student_performance():
     if "user_id" not in session:
         return redirect("/")
@@ -424,8 +596,92 @@ def student_performance():
         marks=marks,
         overall_labels=overall_labels,
         overall_values=overall_values
-    )
+    )'''
 
+@app.route("/performance", methods=["GET", "POST"])
+def student_performance():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    teacher = cursor.fetchone()
+    teacher_class = teacher["class_teacher"]
+
+    cursor.execute("SELECT id, name FROM students WHERE class=%s ORDER BY roll_no ASC", (teacher_class,))
+    students = cursor.fetchall()
+
+    selected_student = None
+    selected_test = None
+    marks = None
+
+    overall_labels = ["Unit 1", "Unit 2", "Half Yearly", "Final"]
+    overall_values = [0, 0, 0, 0]
+
+    # ✅ UI-only subject names
+    if "subject_names" not in session:
+        session["subject_names"] = {}
+
+    if request.method == "POST":
+
+        # Save subject names (UI only)
+        if request.form.get("action") == "set_subject_names":
+            session["subject_names"] = {
+                "sub1": request.form.get("sub1"),
+                "sub2": request.form.get("sub2"),
+                "sub3": request.form.get("sub3"),
+                "sub4": request.form.get("sub4"),
+                "sub5": request.form.get("sub5"),
+            }
+
+        # View marks
+        if request.form.get("action") == "view_marks":
+            student_id = request.form["student_id"]
+            selected_test = request.form["test_name"]
+
+            cursor.execute("SELECT * FROM students WHERE id=%s", (student_id,))
+            selected_student = cursor.fetchone()
+
+            cursor.execute("""
+                SELECT subject1, subject2, subject3, subject4, subject5
+                FROM student_marks 
+                WHERE student_id=%s AND test_name=%s
+            """, (student_id, selected_test))
+            marks = cursor.fetchone()
+
+            def get_avg(test_name):
+                cursor.execute("""
+                    SELECT 
+                      COALESCE(AVG(subject1 + subject2 + subject3 + subject4 + subject5) / 5, 0) AS avg_marks
+                    FROM student_marks
+                    WHERE student_id=%s AND test_name=%s
+                """, (student_id, test_name))
+                row = cursor.fetchone()
+                return float(row["avg_marks"]) if row and row["avg_marks"] is not None else 0
+
+            overall_values = [
+                get_avg("unit1"),
+                get_avg("unit2"),
+                get_avg("halfyearly"),
+                get_avg("final")
+            ]
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "student_performance.html",
+        students=students,
+        teacher_class=teacher_class,
+        selected_student=selected_student,
+        selected_test=selected_test,
+        marks=marks,
+        overall_labels=overall_labels,
+        overall_values=overall_values,
+        subject_names=session.get("subject_names", {})
+    )
 
 
 @app.route("/student/edit/<int:id>", methods=["GET", "POST"])
@@ -694,4 +950,4 @@ def delete_teacher(teacher_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5001)

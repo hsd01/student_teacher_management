@@ -4,8 +4,39 @@
 {% block content %}
 <h3 class="mb-3">📈 Student Performance (Class {{ teacher_class }})</h3>
 
+<!-- ✅ Subject Name Input (UI ONLY) -->
+<div class="card shadow p-3 mb-3">
+  <h6 class="mb-2">✏️ Subject Names (UI only)</h6>
+  <form method="POST" class="row g-2">
+    <input type="hidden" name="action" value="set_subject_names">
+
+    <div class="col-md-2">
+      <input class="form-control" name="sub1" placeholder="Subject 1" value="{{ subject_names.sub1 if subject_names }}">
+    </div>
+    <div class="col-md-2">
+      <input class="form-control" name="sub2" placeholder="Subject 2" value="{{ subject_names.sub2 if subject_names }}">
+    </div>
+    <div class="col-md-2">
+      <input class="form-control" name="sub3" placeholder="Subject 3" value="{{ subject_names.sub3 if subject_names }}">
+    </div>
+    <div class="col-md-2">
+      <input class="form-control" name="sub4" placeholder="Subject 4" value="{{ subject_names.sub4 if subject_names }}">
+    </div>
+    <div class="col-md-2">
+      <input class="form-control" name="sub5" placeholder="Subject 5" value="{{ subject_names.sub5 if subject_names }}">
+    </div>
+
+    <div class="col-md-2">
+      <button class="btn btn-secondary w-100">Apply</button>
+    </div>
+  </form>
+</div>
+
+<!-- Student + Test Select -->
 <div class="card shadow p-3 mb-4">
   <form method="POST" class="row g-2">
+    <input type="hidden" name="action" value="view_marks">
+
     <div class="col-md-4">
       <label class="form-label">Select Student</label>
       <select name="student_id" class="form-select" required>
@@ -41,11 +72,11 @@
     <div class="card shadow p-3">
       <h5>Marks – {{ selected_test|capitalize }}</h5>
       <ul class="list-group">
-        <li class="list-group-item">Subject 1: {{ marks.subject1 }}</li>
-        <li class="list-group-item">Subject 2: {{ marks.subject2 }}</li>
-        <li class="list-group-item">Subject 3: {{ marks.subject3 }}</li>
-        <li class="list-group-item">Subject 4: {{ marks.subject4 }}</li>
-        <li class="list-group-item">Subject 5: {{ marks.subject5 }}</li>
+        <li class="list-group-item">{{ subject_names.sub1 or 'Subject 1' }}: {{ marks.subject1 }}</li>
+        <li class="list-group-item">{{ subject_names.sub2 or 'Subject 2' }}: {{ marks.subject2 }}</li>
+        <li class="list-group-item">{{ subject_names.sub3 or 'Subject 3' }}: {{ marks.subject3 }}</li>
+        <li class="list-group-item">{{ subject_names.sub4 or 'Subject 4' }}: {{ marks.subject4 }}</li>
+        <li class="list-group-item">{{ subject_names.sub5 or 'Subject 5' }}: {{ marks.subject5 }}</li>
       </ul>
     </div>
   </div>
@@ -58,20 +89,22 @@
   </div>
 </div>
 
-<!-- ✅ NEW: Overall Exams Pie Chart -->
 <div class="card shadow p-3 mt-4 text-center">
   <h5>🥧 Overall Performance (All Exams)</h5>
-
-  <div class="d-flex justify-content-center">
-    <div style="width: 280px; height: 280px;">
-      <canvas id="overallPieChart"></canvas>
-    </div>
+  <div style="width: 280px; height: 280px; margin:auto;">
+    <canvas id="overallPieChart"></canvas>
   </div>
 </div>
 
 <script>
-  // Bar chart (selected test)
-  const labels = ["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5"];
+  const labels = [
+    "{{ subject_names.sub1 or 'Subject 1' }}",
+    "{{ subject_names.sub2 or 'Subject 2' }}",
+    "{{ subject_names.sub3 or 'Subject 3' }}",
+    "{{ subject_names.sub4 or 'Subject 4' }}",
+    "{{ subject_names.sub5 or 'Subject 5' }}"
+  ];
+
   const values = [
     {{ marks.subject1 }},
     {{ marks.subject2 }},
@@ -91,7 +124,6 @@
     }
   });
 
-  // Pie chart (all exams)
   const overallLabels = {{ overall_labels | tojson }};
   const overallValues = {{ overall_values | tojson }};
 
@@ -99,33 +131,10 @@
     type: 'pie',
     data: {
       labels: overallLabels,
-      datasets: [{
-        data: overallValues
-      }]
+      datasets: [{ data: overallValues }]
     }
   });
 </script>
-<script>
-  new Chart(document.getElementById("overallPieChart"), {
-    type: 'pie',
-    data: {
-      labels: overallLabels,
-      datasets: [{
-        data: overallValues
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom'
-        }
-      }
-    }
-  });
-</script>
-
 {% endif %}
 
 {% endblock %}
