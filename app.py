@@ -226,7 +226,6 @@ def add_student():
 
     return redirect("/dashboard")
 
-import pandas as pd
 
 @app.route("/students/import", methods=["POST"])
 def import_students():
@@ -412,11 +411,29 @@ def dashboard():
     # ==========================
     if role == "admin":
         # Total counts
+        #cursor.execute("SELECT COUNT(*) AS total_students FROM students")
+        #total_students = cursor.fetchone()["total_students"]
+
+        #cursor.execute("SELECT COUNT(*) AS total_teachers FROM users WHERE role='teacher'")
+        #total_teachers = cursor.fetchone()["total_teachers"]
+        ####################
+        cursor.execute("SELECT id, username, role, class_teacher, is_active FROM users WHERE role='teacher'")
+        teachers = cursor.fetchall()
+
+        # stats
         cursor.execute("SELECT COUNT(*) AS total_students FROM students")
         total_students = cursor.fetchone()["total_students"]
 
         cursor.execute("SELECT COUNT(*) AS total_teachers FROM users WHERE role='teacher'")
         total_teachers = cursor.fetchone()["total_teachers"]
+
+        cursor.execute("""
+        SELECT class, COUNT(*) AS total
+        FROM students
+        GROUP BY class
+        ORDER BY class
+        """)
+        class_stats = cursor.fetchall()
 
         # Students per class
         cursor.execute("""
@@ -429,14 +446,29 @@ def dashboard():
 
         cursor.close()
         conn.close()
+        #cursor.close()
+        #conn.close()
 
+        '''return render_template(
+            "admin_dashboard.html",
+            teachers=teachers,
+            total_students=total_students,
+            total_teachers=total_teachers,
+            class_stats=class_stats
+        )'''    
+        #################
+        
         return render_template(
             "admin_dashboard.html",   # 👈 create this template
             total_students=total_students,
             total_teachers=total_teachers,
-            class_stats=class_stats
+            class_stats=class_stats,
+            teachers=teachers
+            #total_students=total_students,
+            #total_teachers=total_teachers,
+            #class_stats=class_stats
         )
-
+        
     # ==========================
     # 👨‍🏫 TEACHER DASHBOARD
     # ==========================
