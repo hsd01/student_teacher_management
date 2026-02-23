@@ -12,7 +12,7 @@
 </div>
 
 <!-- Test Selector -->
-<form method="GET" class="mb-3">
+<!--form method="GET" class="mb-3">
   <div class="row">
     <div class="col-md-4">
       <label class="form-label mb-1">Select Test</label>
@@ -24,7 +24,28 @@
       </select>
     </div>
   </div>
+</form-->
+<form method="GET" class="mb-3">
+  <div class="row align-items-end g-2">
+    <div class="col-md-4">
+      <label class="form-label mb-1">Select Test</label>
+      <select name="test" class="form-select" onchange="this.form.submit()">
+        <option value="unit1" {% if selected_test == 'unit1' %}selected{% endif %}>Unit Test 1</option>
+        <option value="unit2" {% if selected_test == 'unit2' %}selected{% endif %}>Unit Test 2</option>
+        <option value="halfyearly" {% if selected_test == 'halfyearly' %}selected{% endif %}>Half Yearly</option>
+        <option value="final" {% if selected_test == 'final' %}selected{% endif %}>Final Exam</option>
+      </select>
+    </div>
+
+    <!-- 📥 Download Class PDF -->
+    <div class="col-md-4">
+      <a href="/class/pdf/{{ selected_test }}" class="btn btn-outline-danger w-100">
+        📥 Download Class Report ({{ selected_test|capitalize }})
+      </a>
+    </div>
+  </div>
 </form>
+
 
 <!-- Chart -->
 <div class="row mb-4">

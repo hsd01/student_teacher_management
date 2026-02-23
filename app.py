@@ -7,6 +7,7 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 from flask import send_file
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -99,7 +100,7 @@ def admin_dashboard():
     )
 
 # student/stu_id  to view perticular student details 
-@app.route("/student/<int:id>")
+'''@app.route("/student/<int:id>")
 def student_profile(id):
     if "user_id" not in session:
         return redirect("/")
@@ -122,7 +123,7 @@ def student_profile(id):
         return "Access Denied", 403
 
     return render_template("student_profile.html", student=student)
-
+'''
 # add new student(s)
 @app.route("/student/add", methods=["POST"])
 def add_student():
@@ -146,6 +147,71 @@ def add_student():
     conn.close()
 
     return redirect("/dashboard")
+
+# add all details into student page ui
+@app.route("/student/<int:id>")
+def student_profile(id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Student details
+    cur.execute("SELECT * FROM students WHERE id=%s", (id,))
+    student = cur.fetchone()
+
+    # Marks per test (total)
+    cur.execute("""
+        SELECT test_name,
+               IFNULL(subject1,0) + IFNULL(subject2,0) + IFNULL(subject3,0) +
+               IFNULL(subject4,0) + IFNULL(subject5,0) + IFNULL(subject6,0) AS total
+        FROM student_marks
+        WHERE student_id=%s
+        ORDER BY FIELD(test_name, 'unit1', 'unit2', 'halfyearly', 'final')
+    """, (id,))
+    rows = cur.fetchall()
+
+    labels = [r["test_name"].upper() for r in rows]
+    values = [r["total"] for r in rows]
+
+    cur.close()
+    conn.close()
+    print("mass iupdate", student)
+    return render_template(
+        "student_profile.html",
+        student=student,
+        labels=labels,
+        values=values
+    )
+
+'''@app.route("/student/<int:id>")
+def student_profile(id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    cur.execute("SELECT * FROM students WHERE id=%s", (id,))
+    student = cur.fetchone()
+
+    cur.execute("""
+        SELECT test_name,
+               subject1 + subject2 + subject3 + subject4 + subject5 + subject6 AS total
+        FROM student_marks WHERE student_id=%s
+    """, (id,))
+    rows = cur.fetchall()
+
+    labels = [r["test_name"] for r in rows]
+    values = [r["total"] for r in rows]
+
+    conn.close()
+
+    return render_template("student_profile.html",
+                           student=student,
+                           labels=labels,
+                           values=values)'''
 
 # import all students
 @app.route("/students/import", methods=["POST"])
@@ -174,7 +240,7 @@ def import_students():
     return redirect("/dashboard")
 
 # student section on gui
-@app.route("/students")
+'''@app.route("/students")
 def students():
     if "user_id" not in session:
         return redirect("/")
@@ -227,7 +293,195 @@ def students():
         students=students,
         teacher_class=teacher_class,
         role=role
+    )'''
+@app.route("/students")
+def students_page():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # get role + class
+    cur.execute("SELECT role, class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    user = cur.fetchone()
+    role = user["role"]
+    teacher_class = user["class_teacher"]
+
+    search = request.args.get("q", "")
+    class_filter = request.args.get("class")
+
+    # For dropdown (admin)
+    cur.execute("SELECT DISTINCT class FROM students ORDER BY class")
+    classes = cur.fetchall()
+
+    if role == "admin":
+        query = "SELECT * FROM students WHERE 1=1"
+        params = []
+
+        if search:
+            query += " AND name LIKE %s"
+            params.append(f"%{search}%")
+
+        if class_filter:
+            query += " AND class = %s"
+            params.append(class_filter)
+
+        query += " ORDER BY class, roll_no"
+        cur.execute(query, params)
+
+    else:
+        query = "SELECT * FROM students WHERE class=%s"
+        params = [teacher_class]
+
+        if search:
+            query += " AND name LIKE %s"
+            params.append(f"%{search}%")
+
+        query += " ORDER BY roll_no"
+        cur.execute(query, params)
+
+    students = cur.fetchall()
+    conn.close()
+
+    return render_template(
+        "students.html",
+        students=students,
+        role=role,
+        teacher_class=teacher_class,
+        classes=classes
     )
+
+#download student detailtemplate name dob fathers, mothers name etc
+@app.route("/students/template_detail")
+def download_student_template():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # If admin → export all students
+    cursor.execute("SELECT role, class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    user = cursor.fetchone()
+
+    if user["role"] == "admin":
+        cursor.execute("""
+            SELECT name, roll_no, class, email, father_name, mother_name, parent_phone, address, dob
+            FROM students
+            ORDER BY class, roll_no
+        """)
+    else:
+        # Teacher → only their class
+        cursor.execute("""
+            SELECT name, class, dob, email, father_name, mother_name, parent_phone, address
+            FROM students
+            WHERE class = %s
+            ORDER BY roll_no
+        """, (user["class_teacher"],))
+
+    students = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    # Create Excel
+    df = pd.DataFrame(students)
+
+    # Ensure folder exists
+    os.makedirs("static/exports", exist_ok=True)
+
+    filename = f"students_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filepath = os.path.join("static/exports", filename)
+
+    df.to_excel(filepath, index=False)
+
+    return send_file(filepath, as_attachment=True)
+
+
+@app.route("/students/import_detail", methods=["POST"])
+def import_students_excel():
+    if "user_id" not in session:
+        return redirect("/")
+
+    file = request.files["file"]
+    df = pd.read_excel(file)
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    for _, row in df.iterrows():
+        name = str(row["name"]).strip()
+        student_class = str(row["class"]).strip()
+        dob = row.get("dob")
+        email = row.get("email")
+        father_name = row.get("father_name")
+        mother_name = row.get("mother_name")
+        parent_phone = row.get("parent_phone")
+        address = row.get("address")
+
+        # 🔍 Find student by (name + class)
+        cursor.execute("""
+            SELECT id FROM students 
+            WHERE name=%s AND class=%s
+        """, (name, student_class))
+        existing = cursor.fetchone()
+
+        if existing:
+            student_id = existing["id"]
+            cursor.execute("""
+                UPDATE students 
+                SET dob=%s, email=%s, father_name=%s, mother_name=%s,
+                    parent_phone=%s, address=%s
+                WHERE id=%s
+            """, (dob, email, father_name, mother_name, parent_phone, address, student_id))
+        '''else:
+            cursor.execute("""
+                INSERT INTO students 
+                (name, dob, email, father_name, mother_name, parent_phone, address)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
+            """, (name, dob, email, father_name, mother_name, parent_phone, address))'''
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect("/students")
+
+# bulk move students
+@app.route("/admin/students/bulk-move", methods=["POST"])
+def bulk_move_students():
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Check admin
+    cur.execute("SELECT role FROM users WHERE id=%s", (session["user_id"],))
+    user = cur.fetchone()
+    if user["role"] != "admin":
+        conn.close()
+        return "Unauthorized", 403
+
+    student_ids = request.form.getlist("student_ids")
+    new_class = request.form.get("new_class")
+
+    if not student_ids or not new_class:
+        conn.close()
+        return redirect("/students")
+
+    placeholders = ",".join(["%s"] * len(student_ids))
+
+    cur.execute(
+        f"UPDATE students SET class=%s WHERE id IN ({placeholders})",
+        [new_class] + student_ids
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/students")
+
 
 # teachers and admin dashboard
 @app.route("/dashboard", methods=["GET", "POST"])
@@ -313,7 +567,7 @@ def dashboard():
     cursor.execute("""
         SELECT s.name,
                IFNULL(m.subject1,0)+IFNULL(m.subject2,0)+IFNULL(m.subject3,0)+
-               IFNULL(m.subject4,0)+IFNULL(m.subject5,0) AS total
+               IFNULL(m.subject4,0)+IFNULL(m.subject5,0)+IFNULL(m.subject6,0) AS total
         FROM students s
         LEFT JOIN student_marks m
           ON s.id = m.student_id AND m.test_name = %s
@@ -375,6 +629,7 @@ def student_performance():
                 "sub3": request.form.get("sub3"),
                 "sub4": request.form.get("sub4"),
                 "sub5": request.form.get("sub5"),
+                "sub6": request.form.get("sub6"),
             }
 
         # View marks
@@ -386,7 +641,7 @@ def student_performance():
             selected_student = cursor.fetchone()
 
             cursor.execute("""
-                SELECT subject1, subject2, subject3, subject4, subject5
+                SELECT subject1, subject2, subject3, subject4, subject5, subject6
                 FROM student_marks 
                 WHERE student_id=%s AND test_name=%s
             """, (student_id, selected_test))
@@ -395,7 +650,7 @@ def student_performance():
             def get_avg(test_name):
                 cursor.execute("""
                     SELECT 
-                      COALESCE(AVG(subject1 + subject2 + subject3 + subject4 + subject5) / 5, 0) AS avg_marks
+                      COALESCE(AVG(subject1 + subject2 + subject3 + subject4 + subject5 + subject6) / 6, 0) AS avg_marks
                     FROM student_marks
                     WHERE student_id=%s AND test_name=%s
                 """, (student_id, test_name))
@@ -411,6 +666,24 @@ def student_performance():
 
     cursor.close()
     conn.close()
+    total_marks = 0
+    average_marks = 0
+    percentage = 0
+
+    if marks:
+        total_marks = (
+            (marks["subject1"] or 0) +
+            (marks["subject2"] or 0) +
+            (marks["subject3"] or 0) +
+            (marks["subject4"] or 0) +
+            (marks["subject5"] or 0) +
+            (marks["subject6"] or 0)
+        )
+
+        average_marks = round(total_marks / 5, 2)
+
+        # assuming each subject is out of 100
+        percentage = round((total_marks / 500) * 100, 2)
 
     return render_template(
         "student_performance.html",
@@ -421,8 +694,23 @@ def student_performance():
         marks=marks,
         overall_labels=overall_labels,
         overall_values=overall_values,
-        subject_names=session.get("subject_names", {})
+        subject_names=session.get("subject_names", {}),
+        total_marks=total_marks,
+        average_marks=average_marks,
+        percentage=percentage
     )
+
+    '''return render_template(
+        "student_performance.html",
+        students=students,
+        teacher_class=teacher_class,
+        selected_student=selected_student,
+        selected_test=selected_test,
+        marks=marks,
+        overall_labels=overall_labels,
+        overall_values=overall_values,
+        subject_names=session.get("subject_names", {})
+    )'''
 
 # edit student(s)
 @app.route("/student/edit/<int:id>", methods=["GET", "POST"])
@@ -494,6 +782,7 @@ def save_marks():
     s3 = request.form["subject3"]
     s4 = request.form["subject4"]
     s5 = request.form["subject5"]
+    s6 = request.form["subject6"]
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -508,15 +797,15 @@ def save_marks():
     if existing:
         cursor.execute("""
             UPDATE student_marks 
-            SET subject1=%s, subject2=%s, subject3=%s, subject4=%s, subject5=%s
+            SET subject1=%s, subject2=%s, subject3=%s, subject4=%s, subject5=%s, subject6=%s
             WHERE student_id=%s AND test_name=%s
-        """, (s1, s2, s3, s4, s5, student_id, test_name))
+        """, (s1, s2, s3, s4, s5, s6, student_id, test_name))
     else:
         cursor.execute("""
             INSERT INTO student_marks 
-            (student_id, test_name, subject1, subject2, subject3, subject4, subject5)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (student_id, test_name, s1, s2, s3, s4, s5))
+            (student_id, test_name, subject1, subject2, subject3, subject4, subject5, subject6)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (student_id, test_name, s1, s2, s3, s4, s5, s6))
 
     conn.commit()
     cursor.close()
@@ -541,7 +830,7 @@ def import_marks_excel():
     cursor = conn.cursor(dictionary=True)
 
     for row in sheet.iter_rows(min_row=2, values_only=True):
-        name, s1, s2, s3, s4, s5 = row
+        name, s1, s2, s3, s4, s5 , s6 = row
 
         # get student id
         cursor.execute(
@@ -557,15 +846,16 @@ def import_marks_excel():
 
         # upsert marks
         cursor.execute("""
-            INSERT INTO student_marks (student_id, test_name, subject1, subject2, subject3, subject4, subject5)
+            INSERT INTO student_marks (student_id, test_name, subject1, subject2, subject3, subject4, subject5, subject6)
             VALUES (%s,%s,%s,%s,%s,%s,%s)
             ON DUPLICATE KEY UPDATE
               subject1=VALUES(subject1),
               subject2=VALUES(subject2),
               subject3=VALUES(subject3),
               subject4=VALUES(subject4),
-              subject5=VALUES(subject5)
-        """, (student_id, test_name, s1, s2, s3, s4, s5))
+              subject5=VALUES(subject5),
+              subject6=VALUES(subject6)
+        """, (student_id, test_name, s1, s2, s3, s4, s5, s6))
 
     conn.commit()
     cursor.close()
@@ -600,11 +890,11 @@ def download_marks_template():
     sheet.title = f"{teacher_class} Marks Template"
 
     # Header row
-    sheet.append(["student_name", "subject1", "subject2", "subject3", "subject4", "subject5"])
+    sheet.append(["student_name", "subject1", "subject2", "subject3", "subject4", "subject5", "subject6"])
 
     # Pre-fill student names
     for s in students:
-        sheet.append([s["name"], "", "", "", "", ""])
+        sheet.append([s["name"], "", "", "", "", "", ""])
 
     file_path = f"marks_template_{teacher_class}.xlsx"
     wb.save(file_path)
@@ -662,6 +952,215 @@ def delete_teacher(teacher_id):
     conn.close()
 
     return redirect("/admin")
+
+# pdf download 
+@app.route("/student/pdf/<int:id>")
+def student_pdf(id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Student details
+    cur.execute("SELECT * FROM students WHERE id=%s", (id,))
+    student = cur.fetchone()
+
+    # Marks summary
+    cur.execute("""
+        SELECT test_name,
+               IFNULL(subject1,0) + IFNULL(subject2,0) + IFNULL(subject3,0) + 
+               IFNULL(subject4,0) + IFNULL(subject5,0) + IFNULL(subject6,0) AS total
+        FROM student_marks 
+        WHERE student_id=%s
+    """, (id,))
+    marks = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    if not student:
+        return "Student not found", 404
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    # Title
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Student Report Card", ln=True, align="C")
+
+    pdf.ln(5)
+
+    # Student Info
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 8, f"Name: {student['name']}", ln=True)
+    pdf.cell(0, 8, f"Roll No: {student['roll_no']}", ln=True)
+    pdf.cell(0, 8, f"Class: {student['class']}", ln=True)
+    pdf.cell(0, 8, f"DOB: {student.get('dob') or 'N/A'}", ln=True)
+    pdf.cell(0, 8, f"Father Name: {student.get('father_name') or 'N/A'}", ln=True)
+    pdf.cell(0, 8, f"Mother Name: {student.get('mother_name') or 'N/A'}", ln=True)
+    pdf.cell(0, 8, f"Parent Contact: {student.get('parent_phone') or 'N/A'}", ln=True)
+    pdf.cell(0, 8, f"Email: {student.get('email') or 'N/A'}", ln=True)
+    pdf.multi_cell(0, 8, f"Address: {student.get('address') or 'N/A'}")
+
+    pdf.ln(5)
+
+    # Marks Table Header
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(60, 8, "Test Name", border=1)
+    pdf.cell(40, 8, "Total Marks", border=1, ln=True)
+
+    pdf.set_font("Arial", size=12)
+
+    for m in marks:
+        pdf.cell(60, 8, m["test_name"].capitalize(), border=1)
+        pdf.cell(40, 8, str(m["total"]), border=1, ln=True)
+    total_marks = sum([m["total"] for m in marks]) if marks else 0
+    max_marks = len(marks) * 500
+    percentage = round((total_marks / max_marks) * 100, 2) if max_marks > 0 else 0
+
+    pdf.ln(5)
+    pdf.cell(0, 8, f"Overall Percentage: {percentage}%", ln=True)
+
+    file_path = f"{student['name']}_report_{id}.pdf"
+    pdf.output(file_path)
+
+    return send_file(file_path, as_attachment=True)
+
+@app.route("/student/pdf/<int:id>/<test_name>")
+def student_pdf_term(id, test_name):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Student details
+    cur.execute("SELECT * FROM students WHERE id=%s", (id,))
+    student = cur.fetchone()
+
+    # Marks for selected term
+    cur.execute("""
+        SELECT subject1, subject2, subject3, subject4, subject5, subject6
+        FROM student_marks 
+        WHERE student_id=%s AND test_name=%s
+    """, (id, test_name))
+    marks = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not student or not marks:
+        return "Data not found", 404
+
+    total = sum([marks["subject1"], marks["subject2"], marks["subject3"],
+                 marks["subject4"], marks["subject5"], marks["subject6"]])
+    percentage = round((total / 500) * 100, 2)
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    # Logo
+    pdf.image("static/logo.png", x=10, y=8, w=25)
+
+    # Title
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "School Report Card", ln=True, align="C")
+    pdf.ln(15)
+
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 8, f"Name: {student['name']}", ln=True)
+    pdf.cell(0, 8, f"Class: {student['class']}    Roll No: {student['roll_no']}", ln=True)
+    pdf.cell(0, 8, f"Exam: {test_name.capitalize()}", ln=True)
+
+    pdf.ln(5)
+
+    # Marks Table
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(50, 8, "Subject", 1)
+    pdf.cell(40, 8, "Marks", 1, ln=True)
+
+    pdf.set_font("Arial", size=12)
+    for i, sub in enumerate(["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5", "Subject 6"], start=1):
+        pdf.cell(50, 8, sub, 1)
+        pdf.cell(40, 8, str(marks[f"subject{i}"]), 1, ln=True)
+
+    pdf.ln(5)
+    pdf.cell(0, 8, f"Total: {total} / 500", ln=True)
+    pdf.cell(0, 8, f"Percentage: {percentage}%", ln=True)
+
+    pdf.ln(20)
+    pdf.cell(0, 8, "Class Teacher Signature: ____________________________", ln=True)
+
+    file_path = f"report_{student['name']}_{test_name}.pdf"
+    pdf.output(file_path)
+
+    return send_file(file_path, as_attachment=True)
+
+@app.route("/class/pdf/<test_name>")
+def class_pdf_bulk(test_name):
+    if "user_id" not in session:
+        return redirect("/")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Get teacher class
+    cur.execute("SELECT class_teacher FROM users WHERE id=%s", (session["user_id"],))
+    teacher = cur.fetchone()
+    teacher_class = teacher["class_teacher"]
+
+    # Students
+    cur.execute("SELECT * FROM students WHERE class=%s ORDER BY roll_no", (teacher_class,))
+    students = cur.fetchall()
+
+    pdf = FPDF()
+
+    for s in students:
+        cur.execute("""
+            SELECT subject1, subject2, subject3, subject4, subject5, subject6
+            FROM student_marks 
+            WHERE student_id=%s AND test_name=%s
+        """, (s["id"], test_name))
+        marks = cur.fetchone()
+
+        if not marks:
+            continue
+
+        total = sum(marks.values())
+        percentage = round((total / 500) * 100, 2)
+
+        pdf.add_page()
+        pdf.image("static/logo.png", x=10, y=8, w=25)
+
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "School Report Card", ln=True, align="C")
+        pdf.ln(15)
+
+        pdf.set_font("Arial", size=12)
+        pdf.cell(0, 8, f"Name: {s['name']}", ln=True)
+        pdf.cell(0, 8, f"Class: {s['class']}  Roll No: {s['roll_no']}", ln=True)
+        pdf.cell(0, 8, f"Exam: {test_name.capitalize()}", ln=True)
+        pdf.ln(5)
+
+        for i in range(1, 6):
+            pdf.cell(50, 8, f"Subject {i}", 1)
+            pdf.cell(40, 8, str(marks[f"subject{i}"]), 1, ln=True)
+
+        pdf.ln(5)
+        pdf.cell(0, 8, f"Total: {total} / 500", ln=True)
+        pdf.cell(0, 8, f"Percentage: {percentage}%", ln=True)
+
+        pdf.ln(15)
+        pdf.cell(0, 8, "Class Teacher Signature: ____________________________", ln=True)
+
+    cur.close()
+    conn.close()
+
+    file_path = f"class_{teacher_class}_{test_name}_reports.pdf"
+    pdf.output(file_path)
+
+    return send_file(file_path, as_attachment=True)
 
 
 if __name__ == "__main__":

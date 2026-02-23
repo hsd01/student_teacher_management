@@ -1,6 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Students{% endblock %}
 {% block content %}
+<!-- 📥 Excel Import / Template -->
+<div class="card shadow-sm p-2 mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <b>📊 Bulk Student Upload (Excel)</b><br>
+      <small class="text-muted">
+        Download template, fill student details, then upload.
+      </small>
+    </div>
+
+    <div class="d-flex gap-2">
+      <!-- Download Template -->
+      <a href="/students/template_detail" class="btn btn-outline-secondary btn-sm">
+        ⬇ Download Template
+      </a>
+
+      <!-- Upload Excel -->
+      <form method="POST" action="/students/import_detail" enctype="multipart/form-data" class="d-flex gap-2">
+        <input type="file" name="file" class="form-control form-control-sm" accept=".xlsx" required>
+        <button class="btn btn-primary btn-sm">⬆ Import</button>
+      </form>
+    </div>
+  </div>
+</div>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
@@ -11,6 +35,10 @@
       <small class="text-muted">Showing students from all classes</small>
     {% endif %}
   </div>
+
+  <div class="d-flex gap-2">
+  
+</div>
 
   <div class="d-flex gap-2">
     <!-- 🔍 Search -->
@@ -24,14 +52,30 @@
       >
       <button class="btn btn-sm btn-outline-primary">Search</button>
     </form>
-
+    {% if role == 'admin' %}
+    <!-- 🏫 Filter by Class (Admin only) -->
+    <form method="GET" class="d-flex">
+      <select name="class" class="form-select form-select-sm me-2">
+        <option value="">All Classes</option>
+        {% for c in classes %}
+          <option value="{{ c.class }}" {% if request.args.get('class') == c.class %}selected{% endif %}>
+            {{ c.class }}
+          </option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-sm btn-outline-secondary">Filter</button>
+    </form>
+    {% endif %}
     <a href="/student/add" class="btn btn-success btn-sm">+ Add Student</a>
   </div>
 </div>
-
+<form method="POST" action="/admin/students/bulk-move">
 <table class="table table-striped shadow-sm">
   <thead class="table-dark">
     <tr>
+      {% if role == 'admin' %}
+        <th><input type="checkbox" id="selectAll"></th>
+      {% endif %}
       <th>Name</th>
       <th>Roll</th>
       <th>Class</th>
@@ -41,6 +85,11 @@
   <tbody>
     {% for s in students %}
     <tr>
+      {% if role == 'admin' %}
+        <td>
+          <input type="checkbox" name="student_ids" value="{{ s.id }}">
+        </td>
+      {% endif %}
       <td>{{ s.name }}</td>
       <td>{{ s.roll_no }}</td>
       <td>{{ s.class }}</td>
@@ -54,6 +103,31 @@
     {% endfor %}
   </tbody>
 </table>
+
+{% if role == 'admin' %}
+<div class="d-flex gap-2 mt-3">
+  <select name="new_class" class="form-select w-25" required>
+    <option value="">-- Move to Class --</option>
+    {% for c in classes %}
+      <option value="{{ c.class }}">{{ c.class }}</option>
+    {% endfor %}
+  </select>
+
+  <button class="btn btn-primary"
+          onclick="return confirm('Move selected students to new class?')">
+    🔁 Bulk Move
+  </button>
+</div>
+{% endif %}
+</form>
+
+<script>
+  document.getElementById("selectAll")?.addEventListener("change", function() {
+    document.querySelectorAll("input[name='student_ids']").forEach(cb => {
+      cb.checked = this.checked;
+    });
+  });
+</script>
 
 {% if students|length == 0 %}
   <div class="alert alert-warning mt-3">

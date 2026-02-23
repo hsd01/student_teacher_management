@@ -25,6 +25,9 @@
     <div class="col-md-2">
       <input class="form-control" name="sub5" placeholder="Subject 5" value="{{ subject_names.sub5 if subject_names }}">
     </div>
+    <div class="col-md-2">
+      <input class="form-control" name="sub6" placeholder="Subject 6" value="{{ subject_names.sub6 if subject_names }}">
+    </div>
 
     <div class="col-md-2">
       <button class="btn btn-secondary w-100">Apply</button>
@@ -67,28 +70,76 @@
 </div>
 
 {% if marks %}
-<div class="row mb-4">
-  <div class="col-md-6">
-    <div class="card shadow p-3">
+<div class="row mb-4 align-items-stretch">
+  <div class="col-md-6 d-flex">
+    <div class="card shadow p-3 w-100 h-100">
       <h5>Marks – {{ selected_test|capitalize }}</h5>
-      <ul class="list-group">
-        <li class="list-group-item">{{ subject_names.sub1 or 'Subject 1' }}: {{ marks.subject1 }}</li>
-        <li class="list-group-item">{{ subject_names.sub2 or 'Subject 2' }}: {{ marks.subject2 }}</li>
-        <li class="list-group-item">{{ subject_names.sub3 or 'Subject 3' }}: {{ marks.subject3 }}</li>
-        <li class="list-group-item">{{ subject_names.sub4 or 'Subject 4' }}: {{ marks.subject4 }}</li>
-        <li class="list-group-item">{{ subject_names.sub5 or 'Subject 5' }}: {{ marks.subject5 }}</li>
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="fw-bold">{{ subject_names.sub1 or 'Subject 1' }}</span>
+          <span class="fw-bold">{{ marks.subject1 }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="fw-bold">{{ subject_names.sub2 or 'Subject 2' }}</span>
+          <span class="fw-bold">{{ marks.subject2 }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="fw-bold">{{ subject_names.sub3 or 'Subject 3' }}</span>
+          <span class="fw-bold">{{ marks.subject3 }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="fw-bold">{{ subject_names.sub4 or 'Subject 4' }}</span>
+          <span class="fw-bold">{{ marks.subject4 }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="fw-bold">{{ subject_names.sub5 or 'Subject 5' }}</span>
+          <span class="fw-bold">{{ marks.subject5 }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="fw-bold">{{ subject_names.sub6 or 'Subject 6' }}</span>
+          <span class="fw-bold">{{ marks.subject6 }}</span>
+        </li>
       </ul>
+
     </div>
   </div>
 
-  <div class="col-md-6">
-    <div class="card shadow p-3">
+  <div class="col-md-6 d-flex">
+    <div class="card shadow p-3 w-100 h-100">
       <h5>📊 Performance Graph</h5>
-      <canvas id="studentChart"></canvas>
+      <!--canvas id="studentChart" style="height: 100%; max-height: 260px;"></canvas-->
+      <canvas id="studentChart" style="max-height: 260px;"></canvas>
     </div>
   </div>
 </div>
 
+
+<div class="card shadow p-3 mt-3">
+  <h5>📌 Summary of Exam {{ selected_test|capitalize }}</h5>
+  <ul class="list-group">
+    <li class="list-group-item">
+      <b>Total Marks:</b> {{ total_marks }} / 500
+    </li>
+    <li class="list-group-item">
+      <b>Average Marks:</b> {{ average_marks }}
+    </li>
+    <li class="list-group-item">
+      <b>Percentage:</b>
+      <span class="badge 
+        {% if percentage >= 75 %} bg-success
+        {% elif percentage >= 40 %} bg-warning
+        {% else %} bg-danger
+        {% endif %}">
+        {{ percentage }} %
+      </span>
+    </li>
+  </ul>
+</div>
+<div class="alert alert-info text-center mt-3">
+  🧮 Total: <b>{{ total_marks }}</b> |
+  📊 Average: <b>{{ average_marks }}</b> |
+  🎯 Percentage: <b>{{ percentage }}%</b>
+</div>
 <div class="card shadow p-3 mt-4 text-center">
   <h5>🥧 Overall Performance (All Exams)</h5>
   <div style="width: 280px; height: 280px; margin:auto;">
@@ -102,7 +153,8 @@
     "{{ subject_names.sub2 or 'Subject 2' }}",
     "{{ subject_names.sub3 or 'Subject 3' }}",
     "{{ subject_names.sub4 or 'Subject 4' }}",
-    "{{ subject_names.sub5 or 'Subject 5' }}"
+    "{{ subject_names.sub5 or 'Subject 5' }}",
+    "{{ subject_names.sub6 or 'Subject 6' }}"
   ];
 
   const values = [
@@ -110,7 +162,8 @@
     {{ marks.subject2 }},
     {{ marks.subject3 }},
     {{ marks.subject4 }},
-    {{ marks.subject5 }}
+    {{ marks.subject5 }},
+    {{ marks.subject6 }}
   ];
 
   new Chart(document.getElementById("studentChart"), {
@@ -135,6 +188,7 @@
     }
   });
 </script>
+
 {% endif %}
 
 {% endblock %}

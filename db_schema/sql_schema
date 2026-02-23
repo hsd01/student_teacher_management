@@ -32,3 +32,5 @@ CREATE TABLE student_marks (
     subject5 INT,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_students_class ON students(class);

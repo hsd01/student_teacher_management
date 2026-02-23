@@ -2,25 +2,59 @@
 {% block content %}
 
 <div class="card shadow p-4">
-  <h3>{{ student.name }}</h3>
-  <p><b>Roll:</b> {{ student.roll_no }}</p>
-  <p><b>Class:</b> {{ student.class }}</p>
+  <div class="row">
+    <div class="col-md-8">
+      <h3 class="mb-3">👤 {{ student.name }}</h3>
 
+      <p><b>Roll No:</b> {{ student.roll_no }}</p>
+      <p><b>Class:</b> {{ student.class }}</p>
+      <p><b>Date of Birth:</b> {{ student.dob or "N/A" }}</p>
+
+      <hr>
+
+      <p><b>Father Name:</b> {{ student.father_name or "N/A" }}</p>
+      <p><b>Mother Name:</b> {{ student.mother_name or "N/A" }}</p>
+      <p><b>Parent Contact:</b> {{ student.parent_phone or "N/A" }}</p>
+      <p><b>Email:</b> {{ student.email or "N/A" }}</p>
+      <p><b>Address:</b> {{ student.address or "N/A" }}</p>
+    </div>
+
+    <div class="col-md-4 text-center">
+      <a href="/student/pdf/{{ student.id }}" class="btn btn-danger w-100 mb-3">
+        📄 Download PDF Report
+      </a>
+    </div>
+  </div>
+
+  <hr>
+
+  <h5 class="mt-3">📊 Performance (Total Marks per Test)</h5>
   <canvas id="marksChart"></canvas>
-  <a href="/student/pdf/{{ student.id }}" class="btn btn-danger mt-3">📄 Download PDF Report</a>
 </div>
 
 <script>
 new Chart(document.getElementById("marksChart"), {
   type: 'bar',
   data: {
-    labels: {{ labels|safe }},
+    labels: {{ labels | tojson }},
     datasets: [{
-      label: 'Marks',
-      data: {{ values|safe }},
+      label: 'Total Marks',
+      data: {{ values | tojson }},
     }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y: { beginAtZero: true }
+    }
   }
 });
 </script>
+<div class="mt-3 d-flex gap-2 flex-wrap">
+  <a href="/student/pdf/{{ student.id }}/unit1" class="btn btn-outline-danger btn-sm">Unit 1 PDF</a>
+  <a href="/student/pdf/{{ student.id }}/unit2" class="btn btn-outline-danger btn-sm">Unit 2 PDF</a>
+  <a href="/student/pdf/{{ student.id }}/halfyearly" class="btn btn-outline-danger btn-sm">Half Yearly PDF</a>
+  <a href="/student/pdf/{{ student.id }}/final" class="btn btn-outline-danger btn-sm">Final PDF</a>
+</div>
 
 {% endblock %}
