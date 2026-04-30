@@ -5,6 +5,8 @@
 # run docker 
 docker build -t my-python-app .
 
+docker build -t ptm-app .
+
 run container
 
-docker run -d -p 5001:5001 --name my-app my-python-app
+docker run -d -p 5001:5001 --name ptm-app ptm-app
